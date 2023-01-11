@@ -4,3 +4,9 @@ Change Log
 0.0.1 (25/12/2022)
 ------------------
 -First Release
+
+
+0.0.2 (12/01/2023)
+------------------
+- added support for cloud render
+- opted for specified frame range upfront, has resulted in progress bar loss.
