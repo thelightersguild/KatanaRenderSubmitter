@@ -76,12 +76,14 @@ class KatanaRenderSubmitterWidget(QtWidgets.QWidget):
         layout_main.addLayout(render_widget_layout)
         self.render_button = QtWidgets.QPushButton('Launch Render')
         self.refresh_button = QtWidgets.QPushButton("Refresh")
+        self.render_local_cbox = QtWidgets.QCheckBox("Render Local")
+        render_widget_layout.addWidget(self.render_local_cbox)
         render_widget_layout.addWidget(self.render_button)
         render_widget_layout.addWidget(self.refresh_button)
         self.connect_signals()
 
     def update_data(self):
-        data = core.get_renderpass_data()
+        #data = core.get_renderpass_data()
         self.render_pass_tree.set_data()
 
 
@@ -103,7 +105,12 @@ class KatanaRenderSubmitterWidget(QtWidgets.QWidget):
             jobs.append(render_job)
             iterator += 1
         #submit jobs
-        core.package_job(jobs)
+        state = self.render_local_cbox.checkState()
+        if state == 2:
+            force_cloud = "0"
+        elif state == 0:
+            force_cloud = "1"
+        core.package_job(jobs, force_cloud)
 
     def refresh_btn_clicked(self):
         self.render_pass_tree.clear()
