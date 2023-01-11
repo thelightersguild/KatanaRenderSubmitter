@@ -10,7 +10,7 @@ from katana_render_submitter import util
 #TODO in set shot context tool, make sure base paths exists like render_cg
 
 
-def package_job(jobs):
+def package_job(jobs, force_cloud):
     #TODO use this later
     shot_context = None
     # get katana file
@@ -50,7 +50,8 @@ def package_job(jobs):
     for job in jobs:
         #TESTING
         #job.frame_range = '1-5'
-        batch_command = ['{}/katana'.format(os.getenv('KATANA_ROOT')), '--batch', '--katana-file', snapshot_file, '--t', job.frame_range, '--render-node', job.pass_name]
+        batch_command = ['{}/katana'.format(os.getenv('KATANA_ROOT')), '--batch', '_3DELIGHT_FORCE_CLOUD={}'.format(force_cloud), '--reuse-render-process', '--katana-file={}'.format(snapshot_file), '--t={}'.format(job.frame_range), '--render-node={}'.format(job.pass_name)]
+        #TODO if rendering locally, want to remove cloud flags
         data_dict[next(iter(data_dict))].append({'batch_cmd': batch_command, 'pass_name': job.pass_name, 'frame_range': job.frame_range})
     # write out file to shot dir
     #TODO will need to be patched, put the shot context at the start of this function
