@@ -15,6 +15,7 @@ def package_job(jobs, force_cloud):
     shot_context = None
     # get katana file
     katana_scene = NodegraphAPI.GetProjectAssetID()
+    file_name = katana_scene.split('/')[-1:][0].strip('.katana')
     # add nodes to katana graph for rendering
     clean_up_dict = dict()
     for job in jobs:
@@ -38,24 +39,22 @@ def package_job(jobs, force_cloud):
         rod.getParameter('args.renderSettings.outputs.outputName.locationSettings.renderLocation.value').setValue(job.render_output,0)
         clean_up_dict[rod] = (render_input_port, incoming_port)
     # save file and make a snapshot.
-    # TODO probably want a dialog to warn useer and version up
     KatanaFile.Save(katana_scene)
     dt = datetime.now()
     ts = datetime.timestamp(dt)
-    snapshot_file = '{}/tmp/{}.katana'.format(jobs[0].shot_dir, ts)
+    job_id = str(ts).split('.')[0]
+    snapshot_file = '{}/tmp/{}_{}.katana'.format(jobs[0].shot_dir, file_name, job_id)
     subprocess.run(['cp', katana_scene, snapshot_file])
     # build data for render job
-    job_id = str(ts).split('.')[0]
     data_dict = {'Job:{}'.format(job_id): list()}
     for job in jobs:
-        #TESTING
-        #job.frame_range = '1-5'
+        #TODO format this multiline
         batch_command = ['{}/katana'.format(os.getenv('KATANA_ROOT')), '--batch', '_3DELIGHT_FORCE_CLOUD={}'.format(force_cloud), '--reuse-render-process', '--katana-file={}'.format(snapshot_file), '--t={}'.format(job.frame_range), '--render-node={}'.format(job.pass_name)]
         #TODO if rendering locally, want to remove cloud flags
-        data_dict[next(iter(data_dict))].append({'batch_cmd': batch_command, 'pass_name': job.pass_name, 'frame_range': job.frame_range})
+        data_dict[next(iter(data_dict))].append({'batch_cmd': batch_command, 'pass_name': job.pass_name, 'frame_range': job.frame_label, 'version': job.version})
     # write out file to shot dir
     #TODO will need to be patched, put the shot context at the start of this function
-    job_file = '{}/tmp/{}.json'.format(jobs[0].shot_dir, ts)
+    job_file = '{}/tmp/{}_{}.json'.format(jobs[0].shot_dir, file_name, job_id)
     out_file = open(job_file, 'w')
     json.dump(data_dict, out_file, indent=6)
     out_file.close()
@@ -94,11 +93,11 @@ def get_renderpass_data():
 class Job(object):
     def __init__(self, pass_name, frame_range, version):
         self.pass_name = pass_name
-        self.frame_range = frame_range
+        self.frame_range = str()
+        self.frame_label = str()
+        self.shot_range = '1121-1266'
         self.version = version
-        #/tlg/dev/users/jlonghurst/render_cg
-        #/tlg/shows/axis/235/0010
-        #TODO these should do in an inherited module called JOB and each job should be a sub job...
+        #TODO these should do in an inherited module called JOB and each job should be a TASK...
         # self.show = os.getenv('SHOW')
         # self.scene = os.getenv('SCENE')
         # self.shot = os.getenv('SHOT')
@@ -107,14 +106,12 @@ class Job(object):
         self.render_output = str()
         #self.get_render_node()
         self.get_render_path()
-
-    # #TODO currently deprecatedm if socket works, do it this way
-    # def get_render_node(self):
-    #     self.render_node = NodegraphAPI.GetNode(self.pass_name)
+        self.get_frame_range(frame_range)
 
     def get_render_path(self):
         self.render_dir = '{}/render_cg'.format(self.shot_dir)
-        version = self.version_up()
+        version = self.version_up(self.version)
+        self.version = version
         #TODO should add sSCENE_SHOT into render file name
         self.render_output = '{}/{}/{}/{}_primary_#.exr'.format(
             self.render_dir,
@@ -123,20 +120,48 @@ class Job(object):
             self.pass_name
         )
 
-    def version_up(self):
+    def get_frame_range(self, range):
+        start, end = self.shot_range.split('-')
+        start = int(start)
+        end = int(end)
+        if '-' in range:
+            valid_range = range
+            self.frame_label = valid_range
+        elif range == 'FML':
+            middle = str(round((start+end)/2))
+            valid_range = f'{start},{middle},{end}'
+            self.frame_label = valid_range
+        elif range == 'x10':
+            frames = '1121,1131,1141,1151,1161,1171,1181,1191,1201,1211,1221,1231,1241,1251,1261'
+            #TODO this doesn't work, so need the above workaround
+            #print (list(range(1121, 1266, 10)))
+            #frames = range(start, end, 10)
+            valid_range = frames
+            self.frame_label = f'{self.shot_range}x10'
+
+        self.frame_range = valid_range
+
+    def version_up(self, version_type):
+        pass_exists = True
         intended_pass = self.render_dir+'/'+self.pass_name
         if not os.path.exists(intended_pass):
-            pass_version_path = intended_pass+'/v01'
+            if version_type == 'V+':
+                ver = 'v01'
+            else:
+                ver = version_type
+            pass_version_path = f'{intended_pass}/{ver}'
             os.makedirs(pass_version_path)
+            pass_exists = False
         # check version for existing directory
         latest_version = max(os.listdir(intended_pass))
-        if not latest_version:
-            latest_version = 'v01'
+        if not pass_exists:
+            pass
         else:
-            current_version = int(latest_version.split('v')[1])
-            latest_version = 'v{:02d}'.format(current_version+1)
-        #add version functionality
-        pass_version_path = intended_pass+latest_version
+            if version_type == 'V+':
+                current_version = int(latest_version.split('v')[1])
+                latest_version = 'v{:02d}'.format(current_version+1)
+            else:
+                latest_version = f'v{version_type}'
         return latest_version
 
 

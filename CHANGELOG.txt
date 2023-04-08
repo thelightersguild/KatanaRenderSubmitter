@@ -10,3 +10,8 @@ Change Log
 ------------------
 - added support for cloud render
 - opted for specified frame range upfront, has resulted in progress bar loss.
+
+0.0.3 (05/04/2023)
+------------------
+- added additional frame range options
+- allowed for custom version input

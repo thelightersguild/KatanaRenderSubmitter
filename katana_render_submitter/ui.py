@@ -1,9 +1,9 @@
 from PyQt5 import QtWidgets, QtCore
 import sys
+from functools import partial
 
 from katana_render_submitter import core
 
-#TODO rename widget
 class RenderPassTree(QtWidgets.QTreeWidget):
     def __init__(self, parent=None):
         super(RenderPassTree, self).__init__(parent)
@@ -39,26 +39,80 @@ class RenderPassTree(QtWidgets.QTreeWidget):
             self.selected_items = self.selectedItems()
             if len(self.selected_items) > 0:
                 menu = QtWidgets.QMenu()
-                custom_action = QtWidgets.QAction('Custom')
-                menu.addAction(custom_action)
-                menu.addAction('FML')
-                menu.addAction('x10')
-                custom_action.triggered.connect(self.set_custom_framerange_dialog)
+                # frame range actions
+                frame_range_title_action = menu.addAction("Set Frame Range")
+                frame_range_title_action.setEnabled(False)
+                custom_frame_action = menu.addAction(' Custom')
+                x10_action = menu.addAction(' 10s')
+                fml_action =  menu.addAction(' FML')
+                x1_action = menu.addAction(' 1s')
+                # versioning actions
+                version_title_action = menu.addAction("Set Version")
+                version_title_action.setEnabled(False)
+                version_up_action = menu.addAction(' Version Up')
+                custom_version_action = menu.addAction(' Custom Version')
+                #signals
+                #framerange
+                custom_frame_action.triggered.connect(partial(self.set_frame_range_action, 'custom'))
+                x10_action.triggered.connect(partial(self.set_frame_range_action, 'x10'))
+                fml_action.triggered.connect(partial(self.set_frame_range_action, 'FML'))
+                x1_action.triggered.connect(partial(self.set_frame_range_action, 'x1'))
+                # versioning
+                version_up_action.triggered.connect(partial(self.set_version_action, 'V+'))
+                custom_version_action.triggered.connect(partial(self.set_version_action, 'custom'))
+                #draw menu
                 if menu.exec_(event.globalPos()):
                     item = source.itemAt(event.pos())
                 return True
         return super().eventFilter(source, event)
 
-    def set_custom_framerange_dialog(self):
-        text, ok = QtWidgets.QInputDialog().getText(
-            self, "QInputDialog().getText()",
-            "User name:",
+    def set_frame_range_action(self, type):
+        frame_range = None
+        if type == 'x10':
+            frame_range = 'x10'
+        if type == 'x1':
+            frame_range = '1121-1266'
+        if type == 'FML':
+            frame_range = 'FML'
+        if type == 'custom':
+            frame_range = self.user_input_dialog(
+                'Set Custom Frame Range',
+                'Specify frame range (e.g 1001-1030)'
+            )
+            if frame_range is None:
+                return
+        self.update_item_columns(self.selected_items, 2, frame_range)
+
+    def user_input_dialog(self, title, description):
+        dialog = QtWidgets.QInputDialog()
+        text, ok = dialog.getText(
+            self,
+            title,
+            description,
             QtWidgets.QLineEdit.Normal
         )
         if ok and text:
             #TODO add check for formatting of range
-            frame_range = text
-            self.update_item_columns(self.selected_items, 2, frame_range)
+            value = text
+            return value
+        else:
+            return None
+
+
+    def set_version_action(self, type):
+        version = None
+        if type == 'V+':
+            version = 'V+'
+        if type == 'custom':
+            version = self.user_input_dialog(
+                'Set Custom Version',
+                'Specify version number'
+            )
+            if version:
+                version = f'{int(version):02d}'
+        if version:
+            self.update_item_columns(self.selected_items, 3, version)
+
 
     def update_item_columns(self, widget_items, column, value):
         for widget_item in widget_items:
@@ -100,7 +154,8 @@ class KatanaRenderSubmitterWidget(QtWidgets.QWidget):
             item = iterator.value()
             pass_name = item.text(1)
             frame_range = item.text(2)
-            render_job = core.Job(pass_name, frame_range, 'V+')
+            version = item.text(3)
+            render_job = core.Job(pass_name, frame_range, version)
             #TODO put a is_valid attribute in Job as a preflight check
             jobs.append(render_job)
             iterator += 1
@@ -121,7 +176,7 @@ def launch_ui(*args):
     # running from terminal
     if args:
         app = QtWidgets.QApplication(args)
-    print ('this is runnning')
+
     x = Window()
     x.show()
     if args:
@@ -135,6 +190,6 @@ importlib.reload(core)
 importlib.reload(ui)
 
 
-x = ui.Window()
+x = ui.KatanaRenderSubmitterWidget()
 x.show()
 '''
