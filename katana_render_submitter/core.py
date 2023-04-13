@@ -48,10 +48,25 @@ def package_job(jobs, force_cloud):
     # build data for render job
     data_dict = {'Job:{}'.format(job_id): list()}
     for job in jobs:
-        #TODO format this multiline
-        batch_command = ['{}/katana'.format(os.getenv('KATANA_ROOT')), '--batch', '_3DELIGHT_FORCE_CLOUD={}'.format(force_cloud), '--reuse-render-process', '--katana-file={}'.format(snapshot_file), '--t={}'.format(job.frame_range), '--render-node={}'.format(job.pass_name)]
+        batch_command = [
+            '{}/katana'.format(os.getenv('KATANA_ROOT')),
+            '--batch',
+            '_3DELIGHT_FORCE_CLOUD={}'.format(force_cloud),
+            '--reuse-render-process',
+            '--katana-file={}'.format(snapshot_file),
+            '--t={}'.format(job.frame_range),
+            '--render-node={}'.format(job.pass_name)
+        ]
         #TODO if rendering locally, want to remove cloud flags
-        data_dict[next(iter(data_dict))].append({'batch_cmd': batch_command, 'pass_name': job.pass_name, 'frame_range': job.frame_label, 'version': job.version})
+        data_dict[next(iter(data_dict))].append(
+            {'batch_cmd': batch_command,
+             'pass_name': job.pass_name,
+             'frame_range': job.frame_label,
+             'version': job.version,
+             'num_frames': job.num_frames,
+             'output_path': '/'.join(job.render_output.split('/')[0:9])
+             }
+        )
     # write out file to shot dir
     #TODO will need to be patched, put the shot context at the start of this function
     job_file = '{}/tmp/{}_{}.json'.format(jobs[0].shot_dir, file_name, job_id)
@@ -72,9 +87,7 @@ def camel_case_split(str):
             words.append(list(c))
         else:
             words[-1].append(c)
-
     return [''.join(word) for word in words]
-
 
 
 def get_renderpass_data():
@@ -95,6 +108,7 @@ class Job(object):
         self.pass_name = pass_name
         self.frame_range = str()
         self.frame_label = str()
+        self.num_frames = int()
         self.shot_range = '1121-1266'
         self.version = version
         #TODO these should do in an inherited module called JOB and each job should be a TASK...
@@ -125,13 +139,17 @@ class Job(object):
         start = int(start)
         end = int(end)
         if '-' in range:
+            fr_start, fr_end = range.split('-')
+            self.num_frames = (int(fr_end) - int(fr_start))+1
             valid_range = range
             self.frame_label = valid_range
         elif range == 'FML':
+            self.num_frames = 3
             middle = str(round((start+end)/2))
             valid_range = f'{start},{middle},{end}'
             self.frame_label = valid_range
         elif range == 'x10':
+            self.num_frames = 15
             frames = '1121,1131,1141,1151,1161,1171,1181,1191,1201,1211,1221,1231,1241,1251,1261'
             #TODO this doesn't work, so need the above workaround
             #print (list(range(1121, 1266, 10)))

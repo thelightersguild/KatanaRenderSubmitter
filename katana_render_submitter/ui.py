@@ -157,6 +157,7 @@ class KatanaRenderSubmitterWidget(QtWidgets.QWidget):
             version = item.text(3)
             render_job = core.Job(pass_name, frame_range, version)
             #TODO put a is_valid attribute in Job as a preflight check
+            #TODO dont need jobs just pass job directly
             jobs.append(render_job)
             iterator += 1
         #submit jobs

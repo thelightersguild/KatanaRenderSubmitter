@@ -15,3 +15,7 @@ Change Log
 ------------------
 - added additional frame range options
 - allowed for custom version input
+
+0.0.4 (10/04/2023)
+------------------
+- adding render path and num frames to job
