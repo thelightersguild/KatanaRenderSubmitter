@@ -19,3 +19,16 @@ Change Log
 0.0.4 (10/04/2023)
 ------------------
 - adding render path and num frames to job
+
+0.0.5 (23/04/2023)
+------------------
+- added version number to render file name
+
+0.0.6 (28-05-2023)
+------------------
+- added sSCENE_SHOT and resolution to file name
+- added support for single and comma separated custom frame ranges
+- added popup dialog for job submission
+- renamed launch render button to submit job
+- removed render loal checkbox
+- igrnore diabled nodes from nodegraph

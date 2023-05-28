@@ -8,7 +8,6 @@ class RenderPassTree(QtWidgets.QTreeWidget):
     def __init__(self, parent=None):
         super(RenderPassTree, self).__init__(parent)
         self.arrange_layout()
-        #self.set_data()
         self.connect_signals()
         #self.resizeColumnsToContents()
         #self.resizeColumnsToContents()
@@ -128,16 +127,15 @@ class KatanaRenderSubmitterWidget(QtWidgets.QWidget):
         layout_main.addWidget(self.render_pass_tree)
         render_widget_layout = QtWidgets.QHBoxLayout()
         layout_main.addLayout(render_widget_layout)
-        self.render_button = QtWidgets.QPushButton('Launch Render')
+        self.render_button = QtWidgets.QPushButton('Submit Job')
         self.refresh_button = QtWidgets.QPushButton("Refresh")
         self.render_local_cbox = QtWidgets.QCheckBox("Render Local")
-        render_widget_layout.addWidget(self.render_local_cbox)
+        #render_widget_layout.addWidget(self.render_local_cbox)
         render_widget_layout.addWidget(self.render_button)
         render_widget_layout.addWidget(self.refresh_button)
         self.connect_signals()
 
     def update_data(self):
-        #data = core.get_renderpass_data()
         self.render_pass_tree.set_data()
 
 
@@ -166,7 +164,12 @@ class KatanaRenderSubmitterWidget(QtWidgets.QWidget):
             force_cloud = "0"
         elif state == 0:
             force_cloud = "1"
-        core.package_job(jobs, force_cloud)
+        result = core.package_job(jobs, force_cloud)
+        #popup message
+        message_box = QtWidgets.QMessageBox()
+        message_box.setText(f"Successfully packaged job. \n Job ID - {result}")
+        message_box.exec_()
+
 
     def refresh_btn_clicked(self):
         self.render_pass_tree.clear()

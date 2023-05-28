@@ -11,6 +11,12 @@ from katana_render_submitter import util
 
 
 def package_job(jobs, force_cloud):
+    """
+    Packages up job into a json file
+
+    Returns:
+        job_id (str): job id
+    """
     #TODO use this later
     shot_context = None
     # get katana file
@@ -78,6 +84,7 @@ def package_job(jobs, force_cloud):
         node.delete()
         ports[1].connect(ports[0])
     KatanaFile.Save(katana_scene)
+    return job_id
 
 
 def camel_case_split(str):
@@ -93,13 +100,14 @@ def camel_case_split(str):
 def get_renderpass_data():
     data_dict = dict()
     for render_node in NodegraphAPI.GetAllNodesByType('Render'):
-        pass_name = render_node.getName()
-        pass_name_split = camel_case_split(pass_name)
-        category = pass_name_split[-1][:-2].lower()
-        if category in data_dict:
-            data_dict[category].append(pass_name)
-        else:
-            data_dict[category] = [pass_name]
+        if not render_node.isBypassed():
+            pass_name = render_node.getName()
+            pass_name_split = camel_case_split(pass_name)
+            category = pass_name_split[-1][:-2].lower()
+            if category in data_dict:
+                data_dict[category].append(pass_name)
+            else:
+                data_dict[category] = [pass_name]
     return data_dict
 
 
@@ -123,15 +131,18 @@ class Job(object):
         self.get_frame_range(frame_range)
 
     def get_render_path(self):
+        scene, shot = util.get_shot_context().split('/')[1:]
         self.render_dir = '{}/render_cg'.format(self.shot_dir)
         version = self.version_up(self.version)
         self.version = version
-        #TODO should add sSCENE_SHOT into render file name
-        self.render_output = '{}/{}/{}/{}_primary_#.exr'.format(
+        self.render_output = '{}/{}/{}/s{}_{}_{}_1920x1080_primary_{}_#.exr'.format(
             self.render_dir,
             self.pass_name,
             version,
-            self.pass_name
+            scene,
+            shot,
+            self.pass_name,
+            version
         )
 
     def get_frame_range(self, range):
@@ -156,6 +167,16 @@ class Job(object):
             #frames = range(start, end, 10)
             valid_range = frames
             self.frame_label = f'{self.shot_range}x10'
+        elif ',' in range:
+            #remove any whitespacing
+            valid_range = range.replace(" ", "")
+            self.frame_label = valid_range
+            self.num_frames = len(valid_range.split(','))
+        else:
+            #assume only a single frame
+            valid_range = range
+            self.num_frames = 1
+            self.frame_label = valid_range
 
         self.frame_range = valid_range
 
@@ -181,20 +202,3 @@ class Job(object):
             else:
                 latest_version = f'v{version_type}'
         return latest_version
-
-
-# importlib.reload(core)
-# x.get_render_path()
-# x.version_up()
-
-
-'''
-import importlib
-import threading
-from katana_render_submitter import core
-thread_function = core.launch_render_cmd
-x = threading.Thread(target=thread_function, args=('1121',), daemon=False)
-y = threading.Thread(target=thread_function, args=('1122',), daemon=False)
-x.start()
-y.start()
-'''
